@@ -1,16 +1,13 @@
-public interface Course {
-    /**
-     * @return Course name and section
-     */
-    String getName();
+public class Course {
+    public final String name;
+    public final String purpose;
+    public final int time;
+    public final int credits;
 
-    /**
-     * @return Graduation requirement fulfilled by this course
-     */
-    String getPurpose();
-
-    /**
-     * @return When this course happens
-     */
-    int getTime();
+    public Course(String abbr, String section, String purpose, int time, int credits) {
+        this.name = String.join("-", abbr, section);
+        this.purpose = purpose;
+        this.time = time;
+        this.credits = credits;
+    }
 }
