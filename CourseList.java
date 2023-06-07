@@ -6,7 +6,7 @@ public interface CourseList {
      * @param credits Number of course credits towards graduation
      * @return False if course already exists (based on courseAbbr and Section); true otherwise
      */
-    boolean addCourse(String courseAbbr, String courseSection, int startTime, int endTime, int credits, boolean priority);
+    boolean addCourse(String courseAbbr, String courseSection, int startTime, int endTime, int credits);
 
     void removeCourse(String courseName);
 
@@ -25,7 +25,7 @@ public interface CourseList {
 
     boolean isCoursePriority(String courseName);
 
-    void changeCoursePriority(String courseName);
+    void changePriority(String purpose);
 
     /**
      * Creates or updates physical file with course information
