@@ -1,14 +1,16 @@
 public class Course {
     public final String name;
     public final String purpose;
-    public final int time;
-    public final int credits;
-    public final boolean priority;
+    public int startTime;
+    public int endTime;
+    public int credits;
+    public boolean priority;
 
-    public Course(String name, String purpose, int time, int credits, boolean priority) {
+    public Course(String name, String purpose, int startTime, int endTime, int credits, boolean priority) {
         this.name = name;
         this.purpose = purpose;
-        this.time = time;
+        this.startTime = startTime;
+        this.endTime = endTime;
         this.credits = credits;
         this.priority = priority;
     }
