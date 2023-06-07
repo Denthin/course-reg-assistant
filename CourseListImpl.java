@@ -6,38 +6,103 @@ import java.util.Map;
 public class CourseListImpl implements CourseList {
     public final String semesterName;
     private final Map<String, Course> courses;
-    private final ArrayList<ArrayList<String>> schedules;
+    private ArrayList<ArrayList<String>> schedules;
+    private int numOldSchedule;
+    private final Map<Integer, ArrayList<String>> times;
+    private final int maxTime;
+    private final Map<String, ArrayList<String>> purposes;
+    private final ArrayList<String> priorities;
+
+
 
     public CourseListImpl(String semesterName, int times, boolean exists) {
         this.semesterName = semesterName;
-        //TODO: create Timeframe hashmap
+        this.times = new HashMap<>();
+        maxTime = times - 1;
+        purposes = new HashMap<>();
+        priorities = new ArrayList<>();
+
         courses = new HashMap<>();
         if (exists) {
-            //TODO: Access existing course (file) and load contents into courses
+            //TODO: Access existing course (file) and load contents into courses with addCourse()
         }
+
         schedules = new ArrayList<>();
         boolean scheduleExists = false; //TODO
         if (scheduleExists) {
             //TODO: access existing schedule (file) and load into schedules
         }
+        numOldSchedule = schedules.size();
     }
 
     @Override
-    public boolean addCourse(String courseAbbr, String courseSection, int time, int credits, boolean priority) {
-        String courseName = String.join(courseAbbr, courseSection);
+    public boolean addCourse(String abbr, String section, int startTime, int endTime, int credits) {
+        if (startTime < 0 || endTime > maxTime) {
+            throw new IndexOutOfBoundsException();
+        }
+        String courseName = String.join(abbr, section);
         if (courses.containsKey(courseName)) {
             return false;
         }
         //TODO: use purpose (file) and courseAbbr to identify this course's purpose
         String purpose = "placeholder";
-        courses.put(courseName, new Course(courseName, purpose, time, credits, priority));
+        boolean priority = priorities.contains(purpose);
+        courses.put(courseName, new Course(courseName, purpose, startTime, endTime, credits, priority));
+        //TODO: add to Purpose and Timeframe hashmap
         return true;
     }
 
     @Override
     public void removeCourse(String courseName) {
-        courses.remove(courseName);
+        if (courses.containsKey(courseName)) {
+            //Remove from purposes hashmap
+            String key = getCoursePurpose(courseName);
+            ArrayList<String> container = purposes.get(key);
+            if (container.size() == 1) { //no other courses with this purpose
+                purposes.remove(key);
+            } else {
+                container.remove(courseName);
+            }
+
+            //Remove from times hashmap
+            int endTime = getCourseEndTime(courseName);
+            for (int key2=getCourseStartTime(courseName); key2<endTime; key2++) {
+                ArrayList<String> container2 = times.get(key2);
+                if (container2.size() == 1) {
+                    times.remove(key2);
+                } else {
+                    container2.remove(courseName);
+                }
+            }
+
+            //Remove schedules containing this course and save changes.
+            if (schedules.size() > 0) {
+                for (int i = schedules.size() - 1; i >= 0; i--) {
+                    if (schedules.get(i).contains(courseName)) {
+                        schedules.remove(i);
+                    }
+                }
+                overwriteSchedules();
+            }
+
+            //remove from courses hashmap
+            courses.remove(courseName);
+        }
     }
+
+    /* Used when times mapped Purpose : int[]
+    private int[] removeFromList(int[] list, int item) {
+        int[] newList = new int[list.length - 1];
+        int newListInd = 0;
+        for (int i : list) {
+            if (i != item) {
+                newList[newListInd] = i;
+                newListInd++;
+            }
+        }
+        return newList;
+    }
+    */
 
     @Override
     public String[] getCourseList() {
@@ -47,11 +112,27 @@ public class CourseListImpl implements CourseList {
     }
 
     @Override
-    public int getCourseTime(String courseName){
+    public String getCoursePurpose(String courseName) {
         if (!courses.containsKey(courseName)) {
             throw new IllegalArgumentException();
         }
-        return courses.get(courseName).time;
+        return courses.get(courseName).purpose;
+    }
+
+    @Override
+    public int getCourseStartTime(String courseName){
+        if (!courses.containsKey(courseName)) {
+            throw new IllegalArgumentException();
+        }
+        return courses.get(courseName).startTime;
+    }
+
+    @Override
+    public int getCourseEndTime(String courseName){
+        if (!courses.containsKey(courseName)) {
+            throw new IllegalArgumentException();
+        }
+        return courses.get(courseName).endTime;
     }
 
     @Override
@@ -71,18 +152,53 @@ public class CourseListImpl implements CourseList {
     }
 
     @Override
+    public void changePriority(String purpose) {
+        if (!purposes.containsKey(purpose)) {
+            throw new IllegalArgumentException();
+        }
+
+        if (priorities.contains(purpose)) { // is priority
+            for (String courseName : purposes.get(purpose)) {
+                courses.get(courseName).priority = false;
+            }
+            priorities.remove(purpose);
+        } else { // isn't priority
+            for (String courseName : purposes.get(purpose)) {
+                courses.get(courseName).priority = true;
+            }
+            priorities.add(purpose);
+        }
+        schedules = new ArrayList<>();
+        overwriteSchedules();
+    }
+
+    @Override
     public void saveCourses() {
         //TODO (file)
     }
 
+    public int getExistingScheduleCount() {
+        return numOldSchedule;
+    }
+
     @Override
     public ArrayList<ArrayList<String>> getSchedules() {
-        //TODO
+        //TODO: Create schedules
         return schedules;
     }
 
     @Override
-    public void saveSchedules() {
+    public void saveNewSchedules() {
+        if (getExistingScheduleCount() == 0) {
+            overwriteSchedules();
+        } else {
+            //TODO (file)
+            numOldSchedule = schedules.size();
+        }
+    }
+
+    private void overwriteSchedules() {
         //TODO (file)
+        numOldSchedule = schedules.size();
     }
 }
