@@ -196,24 +196,26 @@ public class CourseListImpl implements CourseList {
     }
 
     @Override
-    public void changePriority(String purpose) {
+    public void setPriority(String purpose, boolean newPriority) {
         if (!purposes.containsKey(purpose)) {
             throw new IllegalArgumentException();
         }
 
-        if (priorities.contains(purpose)) { // is priority
+        if (priorities.contains(purpose) && !newPriority) { // true -> false
             for (String courseName : purposes.get(purpose)) {
                 courses.get(courseName).priority = false;
             }
             priorities.remove(purpose);
-        } else { // isn't priority
+            schedules = new ArrayList<>();
+            overwriteSchedules();
+        } else if (!priorities.contains(purpose) && newPriority) { // false -> true
             for (String courseName : purposes.get(purpose)) {
                 courses.get(courseName).priority = true;
             }
             priorities.add(purpose);
+            schedules = new ArrayList<>();
+            overwriteSchedules();
         }
-        schedules = new ArrayList<>();
-        overwriteSchedules();
     }
 
     @Override

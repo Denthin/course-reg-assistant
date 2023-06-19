@@ -25,7 +25,7 @@ public interface CourseList {
 
     boolean isCoursePriority(String courseName);
 
-    void changePriority(String purpose);
+    void setPriority(String purpose, boolean newPriority);
 
     /**
      * Creates or updates physical file with course information
