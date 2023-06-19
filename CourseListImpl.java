@@ -31,6 +31,7 @@ public class CourseListImpl implements CourseList {
         boolean scheduleExists = false; //TODO
         if (scheduleExists) {
             //TODO: access existing schedule (file) and load into schedules
+            //TODO: initialize schedules w/ length of existing file; ArrayList<>(len)
         }
         numOldSchedule = schedules.size();
     }
@@ -44,11 +45,30 @@ public class CourseListImpl implements CourseList {
         if (courses.containsKey(courseName)) {
             return false;
         }
+
         //TODO: use purpose (file) and courseAbbr to identify this course's purpose
         String purpose = "placeholder";
         boolean priority = priorities.contains(purpose);
         courses.put(courseName, new Course(courseName, purpose, startTime, endTime, credits, priority));
-        //TODO: add to Purpose and Timeframe hashmap
+
+        //Add to Purpose and Timeframe hashmap
+        if (purposes.containsKey(purpose)) {
+            purposes.get(purpose).add(courseName);
+        } else {
+            ArrayList<String> course = new ArrayList<>();
+            course.add(courseName);
+            purposes.put(purpose, course);
+        }
+        for (; startTime < endTime; startTime++) {
+            if (times.containsKey(startTime)) {
+                times.get(startTime).add(courseName);
+            } else {
+                ArrayList<String> time = new ArrayList<>();
+                time.add(courseName);
+                times.put(startTime, time);
+            }
+        }
+
         return true;
     }
 
@@ -104,10 +124,34 @@ public class CourseListImpl implements CourseList {
     }
     */
 
+    private void swap(String[] array, int index1, int index2) {
+        if (index1 != index2) {
+            String holder = array[index1];
+            array[index1] = array[index2];
+            array[index2] = holder;
+        }
+    }
+
+    private void quickSort(String[] array, int min, int max) {
+        if (min < max) {
+            int i = min;
+            for (int a = min; a < max; a++) {
+                if (array[a].compareTo(array[max]) < 0) {
+                    swap(array, i, a);
+                    i++;
+                }
+            }
+            swap(array, i, max);
+
+            quickSort(array, min, i - 1);
+            quickSort(array, i + 1, max);
+        }
+    }
+
     @Override
     public String[] getCourseList() {
         String[] courseList = courses.keySet().toArray(new String[0]);
-        //TODO: sort courseList alphabetically
+        quickSort(courseList, 0, courseList.length - 1);
         return courseList;
     }
 
