@@ -14,4 +14,8 @@ public class Course {
         this.credits = credits;
         this.priority = priority;
     }
+
+    public String toString() {
+        return name + ", " + purpose + ", " + startTime + ", " + endTime + ", " + credits + ", " + priority;
+    }
 }
