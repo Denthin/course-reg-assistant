@@ -1,3 +1,4 @@
+import java.io.IOException;
 import java.util.ArrayList;
 
 public interface CourseList {
@@ -6,9 +7,9 @@ public interface CourseList {
      * @param credits Number of course credits towards graduation
      * @return False if course already exists (based on courseAbbr and Section); true otherwise
      */
-    boolean addCourse(String courseAbbr, String courseSection, int startTime, int endTime, int credits);
+    boolean addCourse(String courseAbbr, String courseSection, int startTime, int endTime, int credits) throws IOException;
 
-    void removeCourse(String courseName);
+    void removeCourse(String courseName) throws IOException;
 
     /**
      * @return Array of course names
@@ -30,7 +31,7 @@ public interface CourseList {
     /**
      * Creates or updates physical file with course information
      */
-    void saveCourses();
+    void saveCourse(Course course) throws IOException;
 
     int getExistingScheduleCount();
 

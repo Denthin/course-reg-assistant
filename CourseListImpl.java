@@ -1,3 +1,7 @@
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -11,11 +15,10 @@ public class CourseListImpl implements CourseList {
     private final Map<Integer, ArrayList<String>> times;
     private final int maxTime;
     private final Map<String, ArrayList<String>> purposes;
-    private final ArrayList<String> priorities;
+    private final ArrayList<String> priorities; //List of priority purposes
 
 
-
-    public CourseListImpl(String semesterName, int times, boolean exists) {
+    public CourseListImpl(String semesterName, int times) throws IOException {
         this.semesterName = semesterName;
         this.times = new HashMap<>();
         maxTime = times - 1;
@@ -23,33 +26,50 @@ public class CourseListImpl implements CourseList {
         priorities = new ArrayList<>();
 
         courses = new HashMap<>();
-        if (exists) {
-            //TODO: Access existing course (file) and load contents into courses with addCourse()
+        Path folderPath = Path.of("semesters/" + semesterName);
+        Path coursesPath = folderPath.resolve(semesterName + "courses.txt");
+        if (Files.exists(coursesPath)) { //semester exists
+            //Read existing courses file, add priority, load contents with addCourse()
+            BufferedReader reader = new BufferedReader(new FileReader(coursesPath.toFile()));
+            String line;
+            while ((line = reader.readLine()) != null && !"".equals(line)) {
+                String[] elements = line.split(", ");
+                if (elements[5].equals("true") && !priorities.contains(elements[1])) {
+                    priorities.add(elements[1]);
+                }
+                addCourse(elements[0], elements[1], Integer.parseInt(elements[2]),
+                        Integer.parseInt(elements[3]), Integer.parseInt(elements[4]));
+            }
+            reader.close();
+        } else {
+            Files.createDirectory(folderPath);
+            Files.createFile(coursesPath);
         }
 
         schedules = new ArrayList<>();
-        boolean scheduleExists = false; //TODO
-        if (scheduleExists) {
+        Path schedulePath = folderPath.resolve(semesterName + "schedules.txt");
+        if (Files.exists(schedulePath)) {
             //TODO: access existing schedule (file) and load into schedules
             //TODO: initialize schedules w/ length of existing file; ArrayList<>(len)
         }
         numOldSchedule = schedules.size();
     }
 
+
+    //TODO: Overload private addCourse w/ extra input 'new'?
+
     @Override
-    public boolean addCourse(String abbr, String section, int startTime, int endTime, int credits) {
+    public boolean addCourse(String courseName, String purpose, int startTime, int endTime, int credits) throws IOException {
         if (startTime < 0 || endTime > maxTime) {
             throw new IndexOutOfBoundsException();
         }
-        String courseName = String.join(abbr, section);
         if (courses.containsKey(courseName)) {
             return false;
         }
 
-        //TODO: use purpose (file) and courseAbbr to identify this course's purpose
-        String purpose = "placeholder";
         boolean priority = priorities.contains(purpose);
-        courses.put(courseName, new Course(courseName, purpose, startTime, endTime, credits, priority));
+        Course newCourse = new Course(courseName, purpose, startTime, endTime, credits, priority);
+        courses.put(courseName, newCourse);
 
         //Add to Purpose and Timeframe hashmap
         if (purposes.containsKey(purpose)) {
@@ -69,11 +89,17 @@ public class CourseListImpl implements CourseList {
             }
         }
 
+        try {
+            saveCourse(newCourse);
+        } catch (IOException e) {
+            saveCourses();
+        }
+
         return true;
     }
 
     @Override
-    public void removeCourse(String courseName) {
+    public void removeCourse(String courseName) throws IOException {
         if (courses.containsKey(courseName)) {
             //Remove from purposes hashmap
             String key = getCoursePurpose(courseName);
@@ -103,6 +129,27 @@ public class CourseListImpl implements CourseList {
                     }
                 }
                 overwriteSchedules();
+            }
+
+            //Remove from courses file by copying to tmp; if failure, overwrite courses file.
+            File courseFile = new File("semesters/" + semesterName + "/courses.txt");
+            File newFile = new File("semesters/" + semesterName + "/tmp.txt");
+            try {
+                if (newFile.createNewFile()) {
+                    BufferedReader reader = new BufferedReader(new FileReader(courseFile));
+                    BufferedWriter writer = new BufferedWriter(new FileWriter(newFile));
+                    String line;
+                    while ((line = reader.readLine()) != null && !line.startsWith(courseName)) {
+                        writer.write(line + "\n");
+                    }
+                    writer.close();
+                    reader.close();
+                    if (!courseFile.delete() || !newFile.renameTo(courseFile)) {
+                        throw new IOException();
+                    }
+                }
+            } catch (IOException e) {
+                saveCourses();
             }
 
             //remove from courses hashmap
@@ -202,6 +249,7 @@ public class CourseListImpl implements CourseList {
         }
 
         if (priorities.contains(purpose) && !newPriority) { // true -> false
+            //TODO: add flag OR do a schedule creation loop w/ the old course list that excludes this course
             for (String courseName : purposes.get(purpose)) {
                 courses.get(courseName).priority = false;
             }
@@ -219,10 +267,31 @@ public class CourseListImpl implements CourseList {
     }
 
     @Override
-    public void saveCourses() {
-        //TODO (file)
+    public void saveCourse(Course course) throws IOException {
+        File courseFile = new File("semesters/" + semesterName + "/courses.txt");
+        BufferedWriter writer = new BufferedWriter(new FileWriter(courseFile, true));
+        if (courses.size() != 1) {
+            writer.append("\n");
+        }
+        writer.append(course.toString());
+        writer.close();
     }
 
+    private void saveCourses() throws IOException {
+        //Overwrites courses file with data from courses hashmap; in case of IOException.
+        File courseFile = new File("semesters/" + semesterName + "/courses.txt");
+        BufferedWriter writer = new BufferedWriter(new FileWriter(courseFile));
+        if (courses.size() > 0) {
+            String[] courseNames = getCourseList();
+            writer.append(courses.get(courseNames[0]).toString());
+            for (int i = 1; i < courseNames.length; i++) {
+                writer.append("\n").append(courses.get(courseNames[i]).toString());
+            }
+        }
+        writer.close();
+    }
+
+    @Override
     public int getExistingScheduleCount() {
         return numOldSchedule;
     }
