@@ -18,4 +18,10 @@ public class Course {
     public String toString() {
         return name + ", " + purpose + ", " + startTime + ", " + endTime + ", " + credits + ", " + priority;
     }
+
+    public boolean conflicts(Course otherCourse) {
+        return purpose.equals(otherCourse.purpose)
+                || (startTime >= otherCourse.startTime && startTime < otherCourse.endTime)
+                || (endTime > otherCourse.startTime && endTime <= otherCourse.endTime);
+    }
 }
