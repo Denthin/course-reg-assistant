@@ -1,29 +1,22 @@
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 
 public class CourseListImpl implements CourseList {
     public final String semesterName;
     private final Map<String, Course> courses;
-    private ArrayList<ArrayList<String>> schedules;
+    private ArrayList<List<String>> schedules;
     private int numOldSchedule;
-    private final Map<Integer, ArrayList<String>> times;
     private final int maxTime;
-    private final Map<String, ArrayList<String>> purposes;
-    private final ArrayList<String> priorities; //List of priority purposes
+    private final Map<String, ArrayList<String>> priorities;
 
 
     public CourseListImpl(String semesterName, int times) throws IOException {
         this.semesterName = semesterName;
-        this.times = new HashMap<>();
         maxTime = times - 1;
-        purposes = new HashMap<>();
-        priorities = new ArrayList<>();
+        priorities = new HashMap<>();
 
         courses = new HashMap<>();
         Path folderPath = Path.of("semesters/" + semesterName);
@@ -34,8 +27,8 @@ public class CourseListImpl implements CourseList {
             String line;
             while ((line = reader.readLine()) != null && !"".equals(line)) {
                 String[] elements = line.split(", ");
-                if (elements[5].equals("true") && !priorities.contains(elements[1])) {
-                    priorities.add(elements[1]);
+                if (elements[5].equals("true") && !priorities.containsKey(elements[1])) {
+                    priorities.put(elements[1], new ArrayList<>(Collections.singletonList(elements[0])));
                 }
                 addCourse(elements[0], elements[1], Integer.parseInt(elements[2]),
                         Integer.parseInt(elements[3]), Integer.parseInt(elements[4]));
@@ -67,27 +60,12 @@ public class CourseListImpl implements CourseList {
             return false;
         }
 
-        boolean priority = priorities.contains(purpose);
+        boolean priority = priorities.containsKey(purpose);
         Course newCourse = new Course(courseName, purpose, startTime, endTime, credits, priority);
         courses.put(courseName, newCourse);
 
-        //Add to Purpose and Timeframe hashmap
-        if (purposes.containsKey(purpose)) {
-            purposes.get(purpose).add(courseName);
-        } else {
-            ArrayList<String> course = new ArrayList<>();
-            course.add(courseName);
-            purposes.put(purpose, course);
-        }
-        for (; startTime < endTime; startTime++) {
-            if (times.containsKey(startTime)) {
-                times.get(startTime).add(courseName);
-            } else {
-                ArrayList<String> time = new ArrayList<>();
-                time.add(courseName);
-                times.put(startTime, time);
-            }
-        }
+        //Add to Priority hashmap
+        if (priority) priorities.get(purpose).add(courseName);
 
         try {
             saveCourse(newCourse);
@@ -101,34 +79,31 @@ public class CourseListImpl implements CourseList {
     @Override
     public void removeCourse(String courseName) throws IOException {
         if (courses.containsKey(courseName)) {
-            //Remove from purposes hashmap
+            //Remove from priorities hashmap
             String key = getCoursePurpose(courseName);
-            ArrayList<String> container = purposes.get(key);
-            if (container.size() == 1) { //no other courses with this purpose
-                purposes.remove(key);
-            } else {
-                container.remove(courseName);
-            }
-
-            //Remove from times hashmap
-            int endTime = getCourseEndTime(courseName);
-            for (int key2=getCourseStartTime(courseName); key2<endTime; key2++) {
-                ArrayList<String> container2 = times.get(key2);
-                if (container2.size() == 1) {
-                    times.remove(key2);
-                } else {
-                    container2.remove(courseName);
-                }
-            }
+            ArrayList<String> container = priorities.get(key);
+            boolean wasPriority = container != null;
+            if (wasPriority) container.remove(courseName);
 
             //Remove schedules containing this course and save changes.
-            if (schedules.size() > 0) {
-                for (int i = schedules.size() - 1; i >= 0; i--) {
-                    if (schedules.get(i).contains(courseName)) {
-                        schedules.remove(i);
+            if (wasPriority && container.size() == 0) {
+                schedules.clear();
+                numOldSchedule = 0;
+                saveNewSchedules();
+            }
+            else {
+                if (schedules.size() > 0) {
+                    int oldSize = schedules.size();
+                    for (int i = schedules.size() - 1; i >= 0; i--) {
+                        if (schedules.get(i).contains(courseName)) {
+                            schedules.remove(i);
+                        }
+                    }
+                    if (oldSize != schedules.size()) {
+                        numOldSchedule = 0;
+                        saveNewSchedules();
                     }
                 }
-                overwriteSchedules();
             }
 
             //Remove from courses file by copying to tmp; if failure, overwrite courses file.
@@ -156,20 +131,6 @@ public class CourseListImpl implements CourseList {
             courses.remove(courseName);
         }
     }
-
-    /* Used when times mapped Purpose : int[]
-    private int[] removeFromList(int[] list, int item) {
-        int[] newList = new int[list.length - 1];
-        int newListInd = 0;
-        for (int i : list) {
-            if (i != item) {
-                newList[newListInd] = i;
-                newListInd++;
-            }
-        }
-        return newList;
-    }
-    */
 
     private void swap(String[] array, int index1, int index2) {
         if (index1 != index2) {
@@ -244,25 +205,25 @@ public class CourseListImpl implements CourseList {
 
     @Override
     public void setPriority(String purpose, boolean newPriority) {
-        if (!purposes.containsKey(purpose)) {
-            throw new IllegalArgumentException();
-        }
-
-        if (priorities.contains(purpose) && !newPriority) { // true -> false
+        if (priorities.containsKey(purpose) && !newPriority) { // true -> false
             //TODO: add flag OR do a schedule creation loop w/ the old course list that excludes this course
-            for (String courseName : purposes.get(purpose)) {
+            for (String courseName : priorities.get(purpose)) {
                 courses.get(courseName).priority = false;
             }
             priorities.remove(purpose);
             schedules = new ArrayList<>();
-            overwriteSchedules();
-        } else if (!priorities.contains(purpose) && newPriority) { // false -> true
-            for (String courseName : purposes.get(purpose)) {
-                courses.get(courseName).priority = true;
+            saveNewSchedules();
+        } else if (!priorities.containsKey(purpose) && newPriority) { // false -> true
+            //Add priority courses to new list
+            priorities.put(purpose, new ArrayList<>());
+            for (Course course : courses.values()) {
+                if (course.purpose.equals(purpose)) {
+                    course.priority = true;
+                    priorities.get(purpose).add(course.name);
+                }
             }
-            priorities.add(purpose);
             schedules = new ArrayList<>();
-            overwriteSchedules();
+            saveNewSchedules();
         }
     }
 
@@ -296,24 +257,114 @@ public class CourseListImpl implements CourseList {
         return numOldSchedule;
     }
 
+    private void undoLastSelection(int[] lens, int i, Set<String> remain, Stack<String> removed, LinkedList<String> schedule) {
+        for (; lens[i] > 0; lens[i]--) {
+            remain.add(removed.pop());
+        }
+        schedule.removeLast();
+    }
+
+    private void moveCourse(int[] lens, int i, Set<String> remain, Stack<String> removed, String course) {
+        remain.remove(course);
+        removed.add(course);
+        lens[i]++;
+    }
+
     @Override
-    public ArrayList<ArrayList<String>> getSchedules() {
-        //TODO: Create schedules
+    public ArrayList<List<String>> getSchedules(int minCourses, int maxCourses) {
+        //TODO: In controller implementation, ensure minCourses >= priorities.size()
+        Set<String> remainingCourses = courses.keySet();
+        Stack<String> removedCourses = new Stack<>();
+        int[] lengths = new int[maxCourses + 1];
+
+        LinkedList<String> schedule = new LinkedList<>();
+        String[] priorPurposes = priorities.keySet().toArray(new String[0]);
+        while (courses.size() - lengths[0] >= minCourses) {
+            //Add courses for all priorities
+            int i=schedule.size();
+            for (; i<priorities.size(); i++) {
+                Course newPCourse = null;
+                //Select priority course
+                for (String course : priorities.get(priorPurposes[i])) {
+                    if (remainingCourses.contains(course)) {
+                        newPCourse = courses.get(course);
+                        break;
+                    }
+                }
+                if (newPCourse == null && i == 0) break;
+                else if (newPCourse == null) {
+                    //Undo last selection
+                    undoLastSelection(lengths, i, remainingCourses, removedCourses, schedule);
+                    i -= 2;
+                } else {
+                    //Add to schedule
+                    schedule.add(newPCourse.name);
+                    moveCourse(lengths, i, remainingCourses, removedCourses, newPCourse.name);
+                    //Remove conflicts
+                    for (String otherCourse : remainingCourses) {
+                        if (courses.get(otherCourse).conflicts(newPCourse)) {
+                            moveCourse(lengths, i+1, remainingCourses, removedCourses, otherCourse);
+                        }
+                    }
+                }
+            }
+            if (schedule.isEmpty()) break;
+
+            //Produce all possible schedules with this round's priority courses
+            boolean back = false;
+            int maxLength = lengths[i] + remainingCourses.size();
+            while (maxLength - lengths[i] >= minCourses - i) {
+                //Fill up a schedule
+                while (schedule.size() < maxCourses && remainingCourses.size() > 0) {
+                    //Get course
+                    Course newCourse = courses.get(remainingCourses.iterator().next());
+                    //Add to schedule
+                    moveCourse(lengths, schedule.size(), remainingCourses, removedCourses, newCourse.name);
+                    schedule.add(newCourse.name);
+                    //Remove conflicts if further courses can be added
+                    if (schedule.size() != maxCourses) {
+                        for (String otherCourse : remainingCourses) {
+                            if (courses.get(otherCourse).conflicts(newCourse)) {
+                                moveCourse(lengths, schedule.size(), remainingCourses, removedCourses, otherCourse);
+                            }
+                        }
+                        back = false;
+                    }
+                }
+                //Add schedule if it meets length requirements and isn't a subset of a produced schedule
+                if (schedule.size() >= minCourses && !back) schedules.add(schedule.stream().toList());
+                //Undo last selection
+                undoLastSelection(lengths, schedule.size(), remainingCourses, removedCourses, schedule);
+                back = true;
+            }
+
+            //Undo non-priority selections and one priority selection, if possible
+            while (schedule.size() >= priorities.size() && schedule.size() > 0) {
+                undoLastSelection(lengths, schedule.size(), remainingCourses, removedCourses, schedule);
+            }
+        }
         return schedules;
     }
 
     @Override
     public void saveNewSchedules() {
-        if (getExistingScheduleCount() == 0) {
-            overwriteSchedules();
-        } else {
-            //TODO (file)
+        Path schedulePath = Path.of("semesters/" + semesterName + "/" + semesterName + "schedules.txt");
+        try {
+            schedulePath.toFile().createNewFile();
+            BufferedWriter writer = new BufferedWriter(new FileWriter(schedulePath.toFile(), getExistingScheduleCount() != 0));
+            int i = getExistingScheduleCount();
+            //TODO: alter schedules.toString() to remove brackets
+            if (getExistingScheduleCount() == 0 && schedules.size() > 0) {
+                writer.append(schedules.get(i).toString());
+                i++;
+            }
+            for (; i < schedules.size(); i++) {
+                writer.append("\n").append(schedules.get(i).toString());
+            }
+            writer.close();
             numOldSchedule = schedules.size();
+        } catch (IOException e) {
+            throw new RuntimeException();
         }
-    }
-
-    private void overwriteSchedules() {
-        //TODO (file)
-        numOldSchedule = schedules.size();
     }
 }

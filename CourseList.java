@@ -1,5 +1,6 @@
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 public interface CourseList {
     /**
@@ -38,10 +39,10 @@ public interface CourseList {
     /**
      * @return List of all possible schedules given current courses and restrictions
      */
-    ArrayList<ArrayList<String>> getSchedules();
+    ArrayList<List<String>> getSchedules(int minCourses, int maxCourses);
 
     /**
      * Creates or updates physical file with generated schedule information
      */
-    void saveNewSchedules();
+    void saveNewSchedules() throws IOException;
 }
