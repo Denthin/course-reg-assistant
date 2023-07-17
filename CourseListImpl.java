@@ -42,14 +42,20 @@ public class CourseListImpl implements CourseList {
         schedules = new ArrayList<>();
         Path schedulePath = folderPath.resolve(semesterName + "schedules.txt");
         if (Files.exists(schedulePath)) {
-            //TODO: access existing schedule (file) and load into schedules
-            //TODO: initialize schedules w/ length of existing file; ArrayList<>(len)
+            //Adds immutable schedules
+            BufferedReader reader = new BufferedReader(new FileReader(coursesPath.toFile()));
+            String line;
+            while ((line = reader.readLine()) != null && !"".equals(line)) {
+                String[] elements = line.split(", ");
+                schedules.add(Arrays.asList(elements));
+            }
+            reader.close();
         }
         numOldSchedule = schedules.size();
     }
 
 
-    //TODO: Overload private addCourse w/ extra input 'new'?
+    //TODO: Overload private addCourse w/ extra input 'new' OR check for existing schedules in addCourse + assign 'new'
 
     @Override
     public boolean addCourse(String courseName, String purpose, int startTime, int endTime, int credits) throws IOException {
@@ -222,6 +228,7 @@ public class CourseListImpl implements CourseList {
                     priorities.get(purpose).add(course.name);
                 }
             }
+            //TODO: only keep schedules with this priority course
             schedules = new ArrayList<>();
             saveNewSchedules();
         }
@@ -257,7 +264,7 @@ public class CourseListImpl implements CourseList {
         return numOldSchedule;
     }
 
-    private void undoLastSelection(int[] lens, int i, Set<String> remain, Stack<String> removed, LinkedList<String> schedule) {
+    private void undoLastSelect(int[] lens, int i, Set<String> remain, Stack<String> removed, LinkedList<String> schedule) {
         for (; lens[i] > 0; lens[i]--) {
             remain.add(removed.pop());
         }
@@ -273,6 +280,8 @@ public class CourseListImpl implements CourseList {
     @Override
     public ArrayList<List<String>> getSchedules(int minCourses, int maxCourses) {
         //TODO: In controller implementation, ensure minCourses >= priorities.size()
+        //TODO: Determine if editing output affects schedules' value
+        //TODO: if numOldSchedule > 0 && newCourses, ensure presence of 1+ new course
         Set<String> remainingCourses = courses.keySet();
         Stack<String> removedCourses = new Stack<>();
         int[] lengths = new int[maxCourses + 1];
@@ -294,7 +303,7 @@ public class CourseListImpl implements CourseList {
                 if (newPCourse == null && i == 0) break;
                 else if (newPCourse == null) {
                     //Undo last selection
-                    undoLastSelection(lengths, i, remainingCourses, removedCourses, schedule);
+                    undoLastSelect(lengths, i, remainingCourses, removedCourses, schedule);
                     i -= 2;
                 } else {
                     //Add to schedule
@@ -332,36 +341,40 @@ public class CourseListImpl implements CourseList {
                     }
                 }
                 //Add schedule if it meets length requirements and isn't a subset of a produced schedule
-                if (schedule.size() >= minCourses && !back) schedules.add(schedule.stream().toList());
+                if (schedule.size() >= minCourses && !back) schedules.add(new ArrayList<>(schedule.stream().toList()));
                 //Undo last selection
-                undoLastSelection(lengths, schedule.size(), remainingCourses, removedCourses, schedule);
+                undoLastSelect(lengths, schedule.size(), remainingCourses, removedCourses, schedule);
                 back = true;
             }
 
             //Undo non-priority selections and one priority selection, if possible
             while (schedule.size() >= priorities.size() && schedule.size() > 0) {
-                undoLastSelection(lengths, schedule.size(), remainingCourses, removedCourses, schedule);
+                undoLastSelect(lengths, schedule.size(), remainingCourses, removedCourses, schedule);
             }
         }
         return schedules;
+    }
+
+    private String remBrackets(String list) {
+        return list.substring(1, list.length()-1);
     }
 
     @Override
     public void saveNewSchedules() {
         Path schedulePath = Path.of("semesters/" + semesterName + "/" + semesterName + "schedules.txt");
         try {
-            schedulePath.toFile().createNewFile();
-            BufferedWriter writer = new BufferedWriter(new FileWriter(schedulePath.toFile(), getExistingScheduleCount() != 0));
-            int i = getExistingScheduleCount();
-            //TODO: alter schedules.toString() to remove brackets
-            if (getExistingScheduleCount() == 0 && schedules.size() > 0) {
-                writer.append(schedules.get(i).toString());
-                i++;
+            if (schedules.size() == 0) {
+                if (Files.exists(schedulePath)) schedulePath.toFile().delete();
+            } else {
+                //Write schedules to file, appending if necessary
+                schedulePath.toFile().createNewFile();
+                int i = getExistingScheduleCount();
+                BufferedWriter writer = new BufferedWriter(new FileWriter(schedulePath.toFile(), i != 0));
+
+                if (i == 0) writer.append(remBrackets(schedules.get(i).toString()));
+                for (; i < schedules.size(); i++) writer.append("\n").append(remBrackets(schedules.get(i).toString()));
+                writer.close();
             }
-            for (; i < schedules.size(); i++) {
-                writer.append("\n").append(schedules.get(i).toString());
-            }
-            writer.close();
             numOldSchedule = schedules.size();
         } catch (IOException e) {
             throw new RuntimeException();
