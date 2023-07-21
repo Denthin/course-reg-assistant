@@ -5,14 +5,16 @@ public class Course {
     public int endTime;
     public int credits;
     public boolean priority;
+    public boolean isNew;
 
-    public Course(String name, String purpose, int startTime, int endTime, int credits, boolean priority) {
+    public Course(String name, String purpose, int startTime, int endTime, int credits, boolean priority, boolean isNew) {
         this.name = name;
         this.purpose = purpose;
         this.startTime = startTime;
         this.endTime = endTime;
         this.credits = credits;
         this.priority = priority;
+        this.isNew = isNew;
     }
 
     public String toString() {
