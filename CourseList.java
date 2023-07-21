@@ -4,11 +4,11 @@ import java.util.List;
 
 public interface CourseList {
     /**
-     * @param courseAbbr Department abbreviation and course number (i.e. ASTR 101)
+     * @param courseName Name of course section (i.e. ASTR 101-001)
      * @param credits Number of course credits towards graduation
-     * @return False if course already exists (based on courseAbbr and Section); true otherwise
+     * @return False if course already exists (based on courseName); true otherwise
      */
-    boolean addCourse(String courseAbbr, String courseSection, int startTime, int endTime, int credits) throws IOException;
+    boolean addCourse(String courseName, String purpose, int startTime, int endTime, int credits) throws IOException;
 
     void removeCourse(String courseName) throws IOException;
 
@@ -27,7 +27,7 @@ public interface CourseList {
 
     boolean isCoursePriority(String courseName);
 
-    void setPriority(String purpose, boolean newPriority);
+    void setPriority(String purpose, boolean isPriority);
 
     /**
      * Creates or updates physical file with course information
@@ -42,7 +42,8 @@ public interface CourseList {
     ArrayList<List<String>> getSchedules(int minCourses, int maxCourses);
 
     /**
-     * Creates or updates physical file with generated schedule information
+     * @param newSchedules Filtered list from getSchedules
+     * @return False if newSchedules is null; true otherwise
      */
-    void saveNewSchedules() throws IOException;
+    boolean addSchedules(ArrayList<List<String>> newSchedules);
 }
