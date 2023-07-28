@@ -1,10 +1,12 @@
 import java.io.IOException;
 
 /**
- * Represents the standard layout of a semester's schedule. Essential for transferring time information between
- * CourseList (float format) and the user (String format). The addBlock function allows for flexibility, depending on
- * how many blocks a schedule contains. Currently, does not account for courses that don't fit perfectly into one block,
- * such as a Monday-only class in a MWF/TTh block schedule.
+ * A Timeframe represents the standard layout of a semester's schedule. Essential for transferring time information
+ * between CourseList (float format) and the user (String format). The addBlock function allows for flexibility,
+ * depending on how many blocks a schedule contains.
+ * <p>
+ * Limitations: Does not account for courses that don't fit perfectly into one block, such as a Monday-only class in a
+ * MWF/TTh block schedule. Blocks cannot be edited or removed; rather, a new Timeframe object must be created.
  */
 public interface Timeframe {
     /**
@@ -25,7 +27,7 @@ public interface Timeframe {
     String[] getStartTimes(String blockName);
 
     /**
-     * Suggests standard end times of regular blocks to the user
+     * Suggests standard end times of regular blocks to the user.
      * @param blockName the name of the block, i.e. MWF
      * @return null if block nonexistent; empty list if block is not regular; list of end times otherwise
      */
@@ -43,7 +45,7 @@ public interface Timeframe {
     boolean isRegular(String blockName);
 
     /**
-     * Creates block with an assumed interval of one hour
+     * Creates block with an assumed interval of one hour.
      * @param name the name of the block
      * @param startTime the earliest hour a class can start, in military time
      * @param endTime the latest hour a class can end, in military time
@@ -64,7 +66,8 @@ public interface Timeframe {
     boolean addBlock(String name, String dayStartTime, String dayEndTime, int classLen, int breakLen) throws IOException;
 
     /**
-     * Accesses first block where time is valid. Should be used when only one block exists or there are no overlapping times.
+     * Accesses first block where time is valid. Should be used when only one block exists or there are no overlapping
+     * times.
      * @param time In military time, i.e. 17:35 instead of 5:35 PM
      * @return -1.0 if time is invalid in every block; int representation of time otherwise
      */

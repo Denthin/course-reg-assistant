@@ -27,12 +27,17 @@ public class RegularBlockImpl implements Block {
     }
 
     /**
-     * @param elements Length of 5
+     * @param elements contains name, startTime, endTime, classLen, and breakLen
      */
     public RegularBlockImpl(String[] elements, int minInt) {
         this(elements[0], elements[1], elements[2], Integer.parseInt(elements[3]), Integer.parseInt(elements[4]), minInt);
     }
 
+    /**
+     * Formats time as a string and removes :SS from the end.
+     * @param time the time to convert into a string
+     * @return the time in HH:MM format
+     */
     private String timeToString(LocalTime time) {
         return time.format(DateTimeFormatter.ISO_LOCAL_TIME).substring(0, 5);
     }

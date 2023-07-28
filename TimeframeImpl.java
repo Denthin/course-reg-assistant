@@ -49,8 +49,11 @@ public class TimeframeImpl implements Timeframe {
         }
     }
 
+    /**
+     * Overwrites the existing file with the current blocks in timeframe
+     * @throws IOException if the file does not exist or cannot be written to
+     */
     private void saveTimeframe() throws IOException {
-        //Overwrites existing file with new data
         Path tfPath = Path.of("timeframes").resolve(name + "timeframe.txt");
         BufferedWriter writer = new BufferedWriter(new FileWriter(tfPath.toFile()));
         if (blocks.size() > 0) {
@@ -63,8 +66,11 @@ public class TimeframeImpl implements Timeframe {
         writer.close();
     }
 
+    /**
+     * Appends the last item in blocks() to the timeframe file
+     * @throws IOException if the file does not exist or cannot be written to
+     */
     private void saveNewBlock() throws IOException {
-        //Appends last item in blocks() to Timeframe file
         try {
             Path tfPath = Path.of("timeframes").resolve(name + "timeframe.txt");
             BufferedWriter writer = new BufferedWriter(new FileWriter(tfPath.toFile(), true));

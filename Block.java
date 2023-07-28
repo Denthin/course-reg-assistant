@@ -1,3 +1,10 @@
+/**
+ * A Block represents a 'block' in a schedule that a class can belong to, i.e. a class only on Mondays, Wednesdays, and
+ * Fridays. Can have classes at varying times (<a href="#{@link}">{@link BlockImpl}</a>) or have most classes start and
+ * end at uniform intervals (<a href="#{@link}">{@link RegularBlockImpl}</a>).
+ * <p>
+ * Limitations: Has no way to deal with overlap between Blocks, such as a MWF block and a Monday-only block.
+ */
 public interface Block {
     /**
      * @return the name of the block, i.e. MWF
@@ -15,7 +22,7 @@ public interface Block {
     String getDayEndTime();
 
     /**
-     * This function includes offsets from previous blocks in the encapsulating timeframe.
+     * Note: return value includes offsets from previous blocks in the encapsulating timeframe.
      * @return the largest integer in range for this block
      */
     int getMaxInt();
